@@ -7,4 +7,7 @@ extern Adafruit_LSM303_Mag_Unified mag = Adafruit_LSM303_Mag_Unified(12345);
 extern float velX, velY, velZ;
 extern float avgX, avgY, avgZ;
 extern float curX, curY, curZ;
+extern int volatile count;
+extern sensors_event_t event;
+extern int mot1, mot2, mot3, mot4;
 #endif

@@ -1,8 +1,7 @@
 #include "globalVars.h"
 
-float velX, velY, velZ;
-float avgX, avgY, avgZ;
 float curX, curY, curZ;
+#define MARG(x) (x>11 ? x = 11 : x < -11 ? x = -11: x = x)
 
 void displaySensorDetails(int x)
 {
@@ -69,8 +68,10 @@ void updateCurAccel(){
   curZ = event.acceleration.z;
 }
 
-void updateAverageAccel(){
-  updateCurAccel();
+void updateAll(){
+  curX = MARG(curX);
+  curY = MARG(curY);
+  curZ = MARG(curZ);
 }
 
 //void updateVelocityVector(int*x, int*y, int*z, )

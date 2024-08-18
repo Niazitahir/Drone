@@ -3,84 +3,70 @@
 #include <Adafruit_L3GD20_U.h>
 #include <Adafruit_LSM303_U.h>
 #include "globalVars.h"
-
 #include <avr/io.h>
 #include <avr/interrupt.h>
-#include <avr/wdt.h>
-
-int loop_count = 0;
-int wdt_counter = 0;
+//https://arduino.stackexchange.com/questions/9765/which-timer-can-i-use-to-control-a-servo-with-arduino-uno
+//https://microcontrollerslab.com/arduino-timer-interrupts-tutorial/
+//interrupts
+//update current accel value
+//counter the accel values
+//reload = timer interrupt time. EX:
+/*
+System clock is 16Mhz and prescalar is 1024 for generating clock of 10ms
+Speed of Timer2 = 16MHz/1024 = 15.625 KHz
+Pulse Time = 1/15.625 KHz = 64 us
+OCR= 10ms/64us = 156.25 ->156 (whole number)
+*/
+int volatile count = 0;
+byte reload = 0xff; 
+ISR(TIMER2_COMPA_vect)
+{
+  count = count + 1;
+  //updateAverageAccel();
+  OCR2A = reload;
+}
 
 void watchdogStart(void)
 {
-  cli();  // disable all interrupts 
-  wdt_reset(); // reset the WDT timer
-/*
-//WDTCSR configuration:
-WDIE = 1: //Interrupt Enable 
-WDE = 1 : //Reset Enable
-WDP3 = 0 :
-For 2000ms Time-out WDP2 = 1 :
-For 2000ms Time-out WDP1 = 1 :
-For 2000ms Time-out WDP0 = 1 :
-    For 2000ms Time-out
-    */
-  // Enter Watchdog Configuration mode: 
-  WDTCSR |= (1<<WDCE) | (1<<WDE); // Set Watchdog settings:
-  WDTCSR = (1<<WDIE) | (0<<WDE) | (0<<WDP3) | (1<<WDP2) | (1<<WDP1) | (1<<WDP0); 
+  cli();
+  TCCR0B = 0; 
+  OCR2A = reload;
+  TCCR2A = 1<<WGM21;
+  TCCR2B = (1<<CS22) | (1<<CS21) | (1<<CS20);
+  TIMSK2 = (1<<OCIE2A);
   sei();
+  Serial.print("OCR2A: "); 
+  Serial.println(OCR2A, HEX);
+  Serial.print("TCCR2A: "); 
+  Serial.println(TCCR2A, HEX);
+  Serial.print("TCCR2B: ");
+  Serial.println(TCCR2B, HEX);
+  Serial.print("TIMSK2: "); 
+  Serial.println(TIMSK2, HEX);
+  Serial.println("TIMER2 Setup Finished.");
 }
-
-void watchdogArm(void)
-{
-  cli();  // disable all interrupts 
-  wdt_reset(); // reset the WDT timer
-/*
-//WDTCSR configuration:
-WDIE = 1: //Interrupt Enable 
-WDE = 1 : //Reset Enable
-WDP3 = 0 :
-For 2000ms Time-out WDP2 = 1 :
-For 2000ms Time-out WDP1 = 1 :
-For 2000ms Time-out WDP0 = 1 :
-    For 2000ms Time-out
-    */
-  // Enter Watchdog Configuration mode: 
-  WDTCSR |= (1<<WDCE) | (1<<WDE); // Set Watchdog settings:
-  WDTCSR = (1<<WDIE) | (1<<WDE) | (0<<WDP3) | (1<<WDP2) | (1<<WDP1) | (1<<WDP0); 
-  sei();
-}
-
 
 void setup() {
   Serial.begin(9600);
   delay(100);
-
-  watchdogStart(); 
-  
   gyroSetup();
   accelSetup();
   magSetup();
-
-
-
+  watchdogStart();  
+  Serial.println("Hello");
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
-  Serial.println(curX);
-  delay(1500);
-  wdt_reset();
-  watchdogStart();
-  wdt_counter = 0;
-}
-ISR(WDT_vect)
-{
-  updateAverageAccel();
-  if(wdt_counter==0)
-  {
-  wdt_counter++;
-  watchdogArm();
+  if (count == 20){
+    cli();
+    TIMSK2 = 0;
+    sei();
+    updateCurAccel();
+    updateAll();
+    Serial.println(curX);
+    count = 0;
+    cli();
+    TIMSK2 = (1<<OCIE2A);
+    sei();
   }
-
 }
