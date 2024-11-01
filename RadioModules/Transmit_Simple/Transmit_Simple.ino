@@ -2,6 +2,14 @@
 #include <nRF24L01.h>
 #include <RF24.h>
 #include <Servo.h>
+
+#include <Wire.h>
+#include "Adafruit_LEDBackpack.h"
+#include "Adafruit_GFX.h"
+#ifndef _BV
+#define _BV(bit) (1<<(bit))
+#endif
+
 //radio
 RF24 radio(7,8); // CE, CSN
 int fail = 0;
@@ -17,6 +25,9 @@ uint8_t potValue[4];
 int redpin = 5; //select the pin for the red LED D2
 int bluepin =6; // select the pin for the blue LED D3
 int greenpin =7;// select the pin for the green LED D4
+
+Adafruit_LEDBackpack matrix = Adafruit_LEDBackpack();
+uint8_t counter = 0;
 
 
 void setup(){
@@ -53,10 +64,29 @@ void setup(){
   analogWrite(redpin, 0);
   analogWrite(bluepin, 0);
   analogWrite(greenpin, 1024);
+  matrix.begin(0x70);  // pass in the address
 }
+
+void updateDisp(int thrott){
+  thrott = map(thrott, 0, 127, 0, 8);
+  for (uint8_t i=0; i<8; i++) {
+    if (i<=thrott){
+      matrix.displaybuffer[i] = 7;
+    }
+    else{
+      matrix.displaybuffer[i] = 0;
+    }
+// draw a diagonal row of pixels
+    
+  }
+  // write the changes we just made to the display
+  matrix.writeDisplay();
+}
+
 void updateHardware(){
   int thr = analogRead(thrust);
   thr = (uint8_t) map(thr, 1, 1023, 0, 127);
+  updateDisp(thr);
   //Serial.println(thr);
   //set all values of potValue arr to thrust at first
   //memset(potValue, thr, sizeof(potValue));
